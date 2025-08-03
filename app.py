@@ -52,10 +52,21 @@ def load_data(file_path):
     cost_cols = [col for col in df.columns if '_75fcc' in col.lower()]
     df_filtered = df[base_cols + cost_cols]
     df_melted = df_filtered.melt(id_vars=base_cols, var_name='metric', value_name='weekly_cost')
-    df_melted['year'] = df_melted['metric'].str.extract(r'(\d{4})').astype(int)
-    df_melted['age_group'] = df_melted['metric'].str.extract(r'fcc(infant|toddler|preschool)')[0].str.capitalize()
-    df_clean = df_melted.dropna(subset=['weekly_cost', 'age_group', 'year'])
-    return df_clean
+    
+    # FIX: Handle cases where year or age group cannot be extracted from the 'metric' column.
+    # Extract year as a string.
+    df_melted['year_str'] = df_melted['metric'].str.extract(r'(\d{4})')
+    # Extract age group as a string.
+    df_melted['age_group_str'] = df_melted['metric'].str.extract(r'fcc(infant|toddler|preschool)')[0]
+
+    # Drop rows where extraction failed (resulting in NaN).
+    df_melted.dropna(subset=['year_str', 'age_group_str', 'weekly_cost'], inplace=True)
+
+    # Now, safely convert data types.
+    df_melted['year'] = df_melted['year_str'].astype(int)
+    df_melted['age_group'] = df_melted['age_group_str'].str.capitalize()
+    
+    return df_melted
 
 # Load the data with the final filename
 df_clean = load_data('nationaldatabaseofchildcare_sampled.csv')
