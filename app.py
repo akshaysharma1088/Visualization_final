@@ -38,6 +38,8 @@ def load_data(file_path):
     try:
         # Using read_csv and handling potential encoding issues.
         df = pd.read_csv(file_path, encoding='latin1')
+        # FIX: Convert all column names to lowercase to prevent KeyErrors
+        df.columns = df.columns.str.lower()
     except FileNotFoundError:
         st.error(f"Error: The file '{file_path}' was not found. Please make sure it's in the correct directory.")
         return None
