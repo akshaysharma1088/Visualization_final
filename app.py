@@ -33,7 +33,7 @@ st.markdown("""
 @st.cache_data
 def load_data(file_path):
     """
-    Loads data from the original CSV file, cleans, and reshapes it.
+    Loads data from the final CSV file, cleans, and reshapes it.
     """
     try:
         # Using read_csv and handling potential encoding issues.
@@ -55,8 +55,8 @@ def load_data(file_path):
     df_clean = df_melted.dropna(subset=['weekly_cost', 'age_group', 'year'])
     return df_clean
 
-# Load the data with the original filename
-df_clean = load_data('nationaldatabaseofchildcareprices.xlsx - nationaldatabaseofchildcare.csv')
+# Load the data with the final filename
+df_clean = load_data('nationaldatabaseofchildcare_sampled.csv')
 
 # If data loading fails, stop the app
 if df_clean is None:
