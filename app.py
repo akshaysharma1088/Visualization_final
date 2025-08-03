@@ -38,7 +38,7 @@ def load_data(file_path):
     try:
         # Using read_csv and handling potential encoding issues.
         df = pd.read_csv(file_path, encoding='latin1')
-        # FIX: Convert all column names to lowercase to prevent KeyErrors
+        # Convert all column names to lowercase to prevent KeyErrors
         df.columns = df.columns.str.lower()
     except FileNotFoundError:
         st.error(f"Error: The file '{file_path}' was not found. Please make sure it's in the correct directory.")
@@ -53,11 +53,11 @@ def load_data(file_path):
     df_filtered = df[base_cols + cost_cols]
     df_melted = df_filtered.melt(id_vars=base_cols, var_name='metric', value_name='weekly_cost')
     
-    # FIX: Handle cases where year or age group cannot be extracted from the 'metric' column.
+    # Handle cases where year or age group cannot be extracted from the 'metric' column.
     # Extract year as a string.
     df_melted['year_str'] = df_melted['metric'].str.extract(r'(\d{4})')
-    # Extract age group as a string.
-    df_melted['age_group_str'] = df_melted['metric'].str.extract(r'fcc(infant|toddler|preschool)')[0]
+    # FIX: Use a more flexible regex for age group that isn't tied to 'fcc'.
+    df_melted['age_group_str'] = df_melted['metric'].str.extract(r'(infant|toddler|preschool)')[0]
 
     # Drop rows where extraction failed (resulting in NaN).
     df_melted.dropna(subset=['year_str', 'age_group_str', 'weekly_cost'], inplace=True)
@@ -72,7 +72,8 @@ def load_data(file_path):
 df_clean = load_data('nationaldatabaseofchildcare_sampled.csv')
 
 # If data loading fails, stop the app
-if df_clean is None:
+if df_clean is None or df_clean.empty:
+    st.error("Data could not be loaded or is empty after cleaning. Please check the file and column names.")
     st.stop()
 
 # --- Main Page Layout ---
