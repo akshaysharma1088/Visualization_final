@@ -30,5 +30,5 @@ st.plotly_chart(fig)
 
 # Footer
 st.markdown("---")
-st.markdown("**Source:** National Database of Childcare Prices (NDCP)  
+st.markdown("**Source:** National Database of Childcare Prices (NDCP)**")
 App by Akshay Sharma")
