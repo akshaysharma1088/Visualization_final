@@ -28,7 +28,9 @@ def load_data(file_path):
         return None
 
     # Reshape and clean the data
-    base_cols = ['state_name', 'state_abbreviation', 'county_name']
+    # FIX: Include 'studyyear' in the base columns as it contains the year information.
+    base_cols = ['state_name', 'state_abbreviation', 'county_name', 'studyyear']
+    
     # Identify cost columns based on a flexible pattern
     cost_cols = [
         col for col in df.columns 
@@ -36,22 +38,22 @@ def load_data(file_path):
     ]
     
     if not all(col in df.columns for col in base_cols) or not cost_cols:
-        st.error("The data file is missing required columns (e.g., 'state_name' or cost data).")
+        st.error("The data file is missing required columns (e.g., 'state_name', 'studyyear', or cost data).")
         return None
 
     df_filtered = df[base_cols + cost_cols]
     df_melted = df_filtered.melt(id_vars=base_cols, var_name='metric', value_name='weekly_cost')
     
-    # Safely extract year and age group from the 'metric' column
-    df_melted['year_str'] = df_melted['metric'].str.extract(r'(\d{4})')
+    # Safely extract age group from the 'metric' column
     df_melted['age_group_str'] = df_melted['metric'].str.extract(r'(infant|toddler|preschool)')[0]
 
-    # Drop rows where extraction failed
-    df_melted.dropna(subset=['year_str', 'age_group_str', 'weekly_cost'], inplace=True)
+    # Drop rows where extraction failed or cost is missing
+    df_melted.dropna(subset=['studyyear', 'age_group_str', 'weekly_cost'], inplace=True)
 
     # Safely convert data types
     if not df_melted.empty:
-        df_melted['year'] = df_melted['year_str'].astype(int)
+        # FIX: Use the 'studyyear' column for the year.
+        df_melted['year'] = df_melted['studyyear'].astype(int)
         df_melted['age_group'] = df_melted['age_group_str'].str.capitalize()
     
     return df_melted
@@ -106,4 +108,52 @@ if selected_state != 'All':
 
 kpi_avg_costs = kpi_data.groupby('age_group')['weekly_cost'].mean()
 
-col1, c
+col1, col2, col3 = st.columns(3)
+with col1:
+    infant_cost = kpi_avg_costs.get('Infant', 0)
+    st.metric(
+        label=f"Avg. Infant Weekly Cost ({end_year})",
+        value=f"${infant_cost:.0f}",
+        help=f"Based on 75th percentile Family Child Care costs in {selected_state}."
+    )
+with col2:
+    toddler_cost = kpi_avg_costs.get('Toddler', 0)
+    st.metric(
+        label=f"Avg. Toddler Weekly Cost ({end_year})",
+        value=f"${toddler_cost:.0f}"
+    )
+with col3:
+    preschool_cost = kpi_avg_costs.get('Preschool', 0)
+    st.metric(
+        label=f"Avg. Preschool Weekly Cost ({end_year})",
+        value=f"${preschool_cost:.0f}"
+    )
+
+
+# --- Visualizations ---
+st.markdown("---")
+col_left, col_right = st.columns([3, 2])
+
+with col_left:
+    st.subheader(f"Weekly Cost Trends in {selected_state}")
+    line_data = dff.groupby(['year', 'age_group'])['weekly_cost'].mean().reset_index()
+    line_fig = go.Figure()
+    for age, color in [('Infant', '#22d3ee'), ('Toddler', '#c084fc'), ('Preschool', '#4ade80')]:
+        trace_data = line_data[line_data['age_group'] == age]
+        line_fig.add_trace(go.Scatter(x=trace_data['year'], y=trace_data['weekly_cost'], name=age, mode='lines+markers', line_color=color))
+    line_fig.update_layout(yaxis_title='Avg. Weekly Cost ($)')
+    st.plotly_chart(line_fig, use_container_width=True)
+
+with col_right:
+    st.subheader(f"Avg. Weekly Infant Cost in {end_year}")
+    map_data = df_clean[(df_clean['year'] == end_year) & (df_clean['age_group'] == 'Infant')]
+    map_avg_data = map_data.groupby('state_abbreviation')['weekly_cost'].mean().reset_index()
+    map_fig = go.Figure(data=go.Choropleth(
+        locations=map_avg_data['state_abbreviation'],
+        locationmode="USA-states",
+        z=map_avg_data['weekly_cost'],
+        colorscale='Teal',
+        colorbar_title='Avg. Weekly Cost'
+    ))
+    map_fig.update_layout(geo_scope='usa')
+    st.plotly_chart(map_fig, use_container_width=True)
